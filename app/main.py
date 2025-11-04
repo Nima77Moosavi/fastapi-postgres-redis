@@ -5,3 +5,8 @@ app = FastAPI()
 @app.get("/")
 async def root():
     return {"message": "Hello from FastAPI + Postgres + Redis"}
+
+
+@app.get("/all")
+async def root():
+    return {"message": "Hello from FastAPI + Postgres + Redis"}
