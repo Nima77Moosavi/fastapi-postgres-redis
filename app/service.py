@@ -2,7 +2,7 @@ from datetime import date, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repository import UserRepository
-from events.producers import publish_checkin_event
+from app.events.producers import publish_checkin_event
 
 
 class UserService:

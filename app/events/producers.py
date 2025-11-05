@@ -1,13 +1,12 @@
 import json
-import aioredis
 from datetime import datetime
-
+import redis.asyncio as redis  # modern redis client with asyncio support
 
 REDIS_URL = "redis://redis-server:6379"
 
 
 async def publish_checkin_event(user_id: int, xp: int, streak: int):
-    redis = await aioredis.from_url(REDIS_URL, decode_responses=True)
+    r = redis.from_url(REDIS_URL, decode_responses=True)
     event = {
         "event": "checkin",
         "user_id": user_id,
@@ -15,5 +14,5 @@ async def publish_checkin_event(user_id: int, xp: int, streak: int):
         "streak": streak,
         "timestamp": datetime.utcnow().isoformat()
     }
-    await redis.xadd("checkin_streams", event)
-    await redis.close()
+    await r.xadd("checkin_streams", event)
+    await r.close()

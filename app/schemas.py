@@ -1,9 +1,11 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import date
+
 
 class UserCreate(BaseModel):
     username: str
     password: str
+
 
 class UserRead(BaseModel):
     id: int
@@ -15,5 +17,5 @@ class UserRead(BaseModel):
     last_checkin: date | None
     last_streak_reset: date | None
 
-    class Config:
-        orm_mode = True
+    
+    model_config = ConfigDict(from_attributes=True)
