@@ -6,45 +6,45 @@ from events.producers import publish_checkin_event
 
 
 class UserService:
-    def __init__(self):
-        self.repo = UserRepository()
+    def __init__(self, repo: UserRepository):
+        self.repo = repo
 
-    async def seed_users(self, db: AsyncSession, count: int):
+    async def seed_users(self, count: int):
         """Register the entered amount of test users"""
         users = []
         for i in range(1, count + 1):
             username = f"user{i}"
             password = f"pass{i}"
-            existing = await self.repo.get_by_username(db, username)
+            existing = await self.repo.get_by_username(username)
             if existing:
                 # skip or update instead of failing
                 continue
-            user = await self.repo.create_user(db, username, password)
+            user = await self.repo.create_user(username, password)
             users.append(user)
         return users
 
-    async def register_user(self, db: AsyncSession, username: str, password: str):
+    async def register_user(self, username: str, password: str):
         """Register a new user if username is unique."""
-        existing = await self.repo.get_by_username(db, username)
+        existing = await self.repo.get_by_username(username)
         if existing:
             raise ValueError("Username already exists")
-        return await self.repo.create_user(db, username, password)
+        return await self.repo.create_user(username, password)
 
-    async def get_user_by_username(self, db: AsyncSession, username: str):
+    async def get_user_by_username(self, username: str):
         """Fetch a user by username."""
-        return await self.repo.get_by_username(db, username)
+        return await self.repo.get_by_username(username)
 
-    async def get_user_by_id(self, db: AsyncSession, user_id: int):
+    async def get_user_by_id(self, user_id: int):
         """Fetch a user by ID."""
-        return await self.repo.get_by_id(db, user_id)
+        return await self.repo.get_by_id(user_id)
 
-    async def update_user(self, db: AsyncSession, user):
+    async def update_user(self, user):
         """Persist changes to a user."""
-        return await self.repo.update_user(db, user)
+        return await self.repo.update_user(user)
 
-    async def checkin(self, db: AsyncSession, user_id: int):
+    async def checkin(self, user_id: int):
         """Daily check‑in logic: update streaks, XP, frozen days."""
-        user = await self.repo.get_by_id(db, user_id)
+        user = await self.repo.get_by_id(user_id)
         if not user:
             raise ValueError("User not found")
 
@@ -74,7 +74,7 @@ class UserService:
         # Update last_checkin
         user.last_checkin = today
 
-        user = await self.repo.update_user(db, user)
+        user = await self.repo.update_user(user)
 
         await publish_checkin_event(user.id, user.xp, user.streak)
 

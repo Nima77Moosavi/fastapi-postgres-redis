@@ -4,27 +4,30 @@ from app.models import User
 
 
 class UserRepository:
-    async def create_user(self, db: AsyncSession, username: str, password: str) -> User:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def create_user(self, username: str, password: str) -> User:
         """Create and persist a new user."""
         user = User(username=username, password=password)
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
+        self.db.add(user)
+        await self.db.commit()
+        await self.db.refresh(user)
         return user
 
-    async def get_by_username(self, db: AsyncSession, username: str) -> User | None:
+    async def get_by_username(self, username: str) -> User | None:
         """Fetch a user by username."""
-        result = await db.execute(select(User).where(User.username == username))
+        result = await self.db.execute(select(User).where(User.username == username))
         return result.scalars().first()
 
-    async def get_by_id(self, db: AsyncSession, user_id: int) -> User | None:
+    async def get_by_id(self, user_id: int) -> User | None:
         """Fetch a user by ID."""
-        result = await db.execute(select(User).where(User.id == user_id))
+        result = await self.db.execute(select(User).where(User.id == user_id))
         return result.scalars().first()
 
-    async def update_user(self, db: AsyncSession, user: User) -> User:
+    async def update_user(self, user: User) -> User:
         """Update an existing user and persist changes."""
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
+        self.db.add(user)
+        await self.db.commit()
+        await self.db.refresh(user)
         return user
