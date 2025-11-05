@@ -1,8 +1,15 @@
 from datetime import date, timedelta
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repository import UserRepository
 from app.events.producers import publish_checkin_event
+from app.schemas import UserCreate
+
+import redis.asyncio as redis
+
+import random
+
+REDIS_URL = "redis://redis-server:6379"
+LEADERBOARD_KEY = "leaderboard:global"
 
 
 class UserService:
@@ -12,23 +19,34 @@ class UserService:
     async def seed_users(self, count: int):
         """Register the entered amount of test users"""
         users = []
+        r = redis.from_url(REDIS_URL, decode_responses=True)
         for i in range(1, count + 1):
             username = f"user{i}"
             password = f"pass{i}"
+            xp = random.randint(1, 100) * 10
             existing = await self.repo.get_by_username(username)
             if existing:
                 # skip or update instead of failing
                 continue
-            user = await self.repo.create_user(username, password)
+            user = await self.repo.create_user(username, password, xp)
             users.append(user)
+
+            await r.zadd(LEADERBOARD_KEY, {f"user:{user.id}": user.xp})
+        await r.close()
         return users
 
-    async def register_user(self, username: str, password: str):
+    async def register_user(self, user: UserCreate):
         """Register a new user if username is unique."""
-        existing = await self.repo.get_by_username(username)
+        existing = await self.repo.get_by_username(user.username)
         if existing:
             raise ValueError("Username already exists")
-        return await self.repo.create_user(username, password)
+        return await self.repo.create_user(
+            username=user.username,
+            password=user.password,
+            xp=user.xp,
+            frozen_days=user.frozen_days,
+            streak=user.streak,
+        )
 
     async def get_user_by_username(self, username: str):
         """Fetch a user by username."""
