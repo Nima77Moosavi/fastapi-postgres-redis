@@ -1,12 +1,7 @@
 from fastapi import FastAPI
+from app.api import router as user_router
+
 
 app = FastAPI()
 
-@app.get("/")
-async def root():
-    return {"message": "Hello from FastAPI + Postgres + Redis"}
-
-
-@app.get("/all")
-async def root():
-    return {"message": "Hello from FastAPI + Postgres + Redis"}
+app.include_router(user_router)

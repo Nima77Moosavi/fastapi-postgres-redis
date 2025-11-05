@@ -8,10 +8,18 @@ services:
     volumes:
       - .:/code
     ports:
-      - "8000:8000"
+      - "50000:8000"
     depends_on:
       - db
       - redis
+
+  consumer:
+    build: .
+    command: python app/events/consumers.py
+    depends_on:
+      - redis
+      - db
+
 
   db:
     image: postgres:15
