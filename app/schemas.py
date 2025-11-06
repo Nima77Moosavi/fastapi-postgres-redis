@@ -5,10 +5,6 @@ from datetime import date
 class UserCreate(BaseModel):
     username: str
     password: str
-    xp: int = Field(default=0, description="initial xp, default = 0")
-    frozen_days: int = Field(
-        default=0, description="initial frozen_days, default = 0")
-    streak: int = Field(default=0, description="initial streak, default = 0")
 
 
 class UserRead(BaseModel):

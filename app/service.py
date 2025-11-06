@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from fastapi import HTTPException
 
 from app.repository import UserRepository
 from app.events.producers import publish_checkin_event
@@ -6,6 +6,7 @@ from app.schemas import UserCreate
 
 import redis.asyncio as redis
 
+from datetime import date, timedelta
 import random
 
 REDIS_URL = "redis://redis-server:6379"
@@ -40,13 +41,13 @@ class UserService:
         existing = await self.repo.get_by_username(user.username)
         if existing:
             raise ValueError("Username already exists")
-        return await self.repo.create_user(
-            username=user.username,
-            password=user.password,
-            xp=user.xp,
-            frozen_days=user.frozen_days,
-            streak=user.streak,
-        )
+        user = await self.repo.create_user(user.username, user.password)
+
+        r = redis.from_url(REDIS_URL, decode_responses=True)
+        await r.zadd(LEADERBOARD_KEY, {f"user:{user.id}": user.xp})
+        await r.close()
+
+        return user
 
     async def get_user_by_username(self, username: str):
         """Fetch a user by username."""
@@ -60,9 +61,9 @@ class UserService:
         """Persist changes to a user."""
         return await self.repo.update_user(user)
 
-    async def checkin(self, user_id: int):
+    async def checkin(self, username: str):
         """Daily check‑in logic: update streaks, XP, frozen days."""
-        user = await self.repo.get_by_id(user_id)
+        user = await self.repo.get_by_username(username)
         if not user:
             raise ValueError("User not found")
 
@@ -70,24 +71,38 @@ class UserService:
 
         # Already checked in today
         if user.last_checkin == today:
-            return user
+            raise HTTPException(
+                status_code=400, detail="Already checked in today")
 
-        # Consecutive day
-        if user.last_checkin == today - timedelta(days=1):
-            user.streak += 1
+        if not user.last_checkin:
+            # First ever check‑in: start streak
+            user.streak = 1
         else:
-            # Missed a day
-            if user.frozen_days > 0:
-                user.frozen_days -= 1
-            else:
-                user.streak = 1  # reset streak
+            delta = (today - user.last_checkin).days
+
+            if delta == 1:
+                # Consecutive day
+                user.streak += 1
+            elif delta > 1:
+                # Missed days
+                missed_days = delta - 1
+                if user.frozen_days >= missed_days:
+                    # Burn frozen days equal to missed days, continue streak
+                    user.frozen_days -= missed_days
+                    user.streak += 1
+                else:
+                    # Not enough frozen days → reset streak
+                    user.streak = 1
+                    user.frozen_days = 0
+                    # Optionally: grant 1 frozen day here if that's your rule
+                    # user.frozen_days = 1
 
         # Update max streak
         if user.streak > user.max_streak:
             user.max_streak = user.streak
 
         # Add XP
-        user.xp += 10  # reward per check‑in
+        user.xp += 10
 
         # Update last_checkin
         user.last_checkin = today

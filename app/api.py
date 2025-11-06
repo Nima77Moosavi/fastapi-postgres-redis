@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Query, Depends, HTTPException
 import redis.asyncio as redis
 
 from app.schemas import UserCreate, UserRead
@@ -9,22 +9,22 @@ REDIS_URL = "redis://redis-server:6379"
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.post("/", response_model=UserRead)
+@router.post("/")
 async def create_user(
     user: UserCreate,
     user_service: UserService = Depends(get_user_service)
-):
+) -> UserRead:
     try:
         return await user_service.register_user(user)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/seed/{count}", response_model=list[UserRead])
+@router.post("/seed")
 async def seed_users(
-    count: int,
+    count: int = Query(50, description="Number of users to seed"),
     user_service: UserService = Depends(get_user_service)
-):
+) -> list[UserRead]:
     """Create a batch of test users: user1..userN"""
     try:
         return await user_service.seed_users(count)
@@ -32,30 +32,29 @@ async def seed_users(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/{username}", response_model=UserRead)
+@router.get("/{username}")
 async def get_user(
     username: str,
     user_service: UserService = Depends(get_user_service)
-):
+) -> UserRead:
     user = await user_service.get_user_by_username(username)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
 
-@router.post("/{user_id}/checkin", response_model=UserRead)
+@router.post("/{username}/checkin")
 async def checkin_user(
-    user_id: int,
+    username: str,
     user_service: UserService = Depends(get_user_service)
-):
+) -> UserRead:
     try:
-        return await user_service.checkin(user_id)
+        return await user_service.checkin(username)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    
+
+
 @router.get("/leaderboard")
-
-
 @router.get("/leaderboard/league/{league}")
 async def get_league_users(league: int = 1):
     r = redis.from_url(REDIS_URL, decode_responses=True)
