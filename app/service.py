@@ -1,16 +1,13 @@
 from fastapi import HTTPException
 
 from app.repository import UserRepository
-from app.events.producers import publish_checkin_event
+from app.events.producers import publish_leaderboard_event
 from app.schemas import UserCreate
 
 import redis.asyncio as redis
 
 from datetime import date, timedelta
 import random
-
-REDIS_URL = "redis://redis-server:6379"
-LEADERBOARD_KEY = "leaderboard:global"
 
 
 class UserService:
@@ -20,7 +17,6 @@ class UserService:
     async def seed_users(self, count: int):
         """Register the entered amount of test users"""
         users = []
-        r = redis.from_url(REDIS_URL, decode_responses=True)
         for i in range(1, count + 1):
             username = f"user{i}"
             password = f"pass{i}"
@@ -32,8 +28,7 @@ class UserService:
             user = await self.repo.create_user(username, password, xp)
             users.append(user)
 
-            await r.zadd(LEADERBOARD_KEY, {f"user:{user.id}": user.xp})
-        await r.close()
+            await publish_leaderboard_event("user_created", user.id, user.xp, user.streak)
         return users
 
     async def register_user(self, user: UserCreate):
@@ -43,9 +38,7 @@ class UserService:
             raise ValueError("Username already exists")
         user = await self.repo.create_user(user.username, user.password)
 
-        r = redis.from_url(REDIS_URL, decode_responses=True)
-        await r.zadd(LEADERBOARD_KEY, {f"user:{user.id}": user.xp})
-        await r.close()
+        await publish_leaderboard_event("user_createdr", user.id, user.xp, user.streak)
 
         return user
 
@@ -109,6 +102,6 @@ class UserService:
 
         user = await self.repo.update_user(user)
 
-        await publish_checkin_event(user.id, user.xp, user.streak)
+        await publish_leaderboard_event("checkin", user.id, user.xp, user.streak)
 
         return user

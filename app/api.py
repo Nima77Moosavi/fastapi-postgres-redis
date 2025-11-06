@@ -54,7 +54,6 @@ async def checkin_user(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.get("/leaderboard")
 @router.get("/leaderboard/league/{league}")
 async def get_league_users(league: int = 1):
     r = redis.from_url(REDIS_URL, decode_responses=True)
