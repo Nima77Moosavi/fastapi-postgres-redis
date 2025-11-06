@@ -38,7 +38,7 @@ class UserService:
             raise ValueError("Username already exists")
         user = await self.repo.create_user(user.username, user.password)
 
-        await publish_leaderboard_event("user_createdr", user.id, user.xp, user.streak)
+        await publish_leaderboard_event("user_created", user.id, user.xp, user.streak)
 
         return user
 
