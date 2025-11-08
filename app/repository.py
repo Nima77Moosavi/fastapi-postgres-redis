@@ -13,9 +13,9 @@ class UserRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create_user(self, username: str, password: str) -> User:
+    async def create_user(self, username: str, password: str, xp: int) -> User:
         """Create and persist a new user ."""
-        user = User(username=username, password=password)
+        user = User(username=username, password=password, xp=xp)
         self.db.add(user)
         await self.db.commit()
         await self.db.refresh(user)
